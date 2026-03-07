@@ -298,9 +298,8 @@ body {
   to { transform: scale(0); opacity: 0; }
 }
 @keyframes dropIn {
-  from { transform: translateY(var(--drop-distance, -60px)); opacity: 0.6; }
-  60% { opacity: 1; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(var(--drop-distance, -60px)); }
+  to { transform: translateY(0); }
 }
 @keyframes swapMove {
   0% { transform: translate(0, 0); }
@@ -309,7 +308,7 @@ body {
 
 .cell.pop-in { animation: popIn 0.3s ease forwards; }
 .cell.fade-out { animation: fadeOut 0.25s ease forwards; }
-.cell.drop { animation: dropIn var(--drop-duration, 0.35s) cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.cell.drop { animation: dropIn var(--drop-duration, 0.35s) cubic-bezier(0.25, 0, 0.35, 1) forwards; }
 .cell.swapping { animation: swapMove 0.22s ease-in-out forwards; }
 
 /* Combo text */
@@ -1109,12 +1108,12 @@ async function applyGravity() {
         if (dropMap[r][c] > 0) {
           const dist = dropMap[r][c];
           cell.style.setProperty('--drop-distance', `${-dist * cellH}px`);
-          cell.style.setProperty('--drop-duration', `${0.15 + dist * 0.06}s`);
+          cell.style.setProperty('--drop-duration', `${0.25 + dist * 0.04}s`);
           cell.classList.add('drop');
         }
       }
     }
-    await delay(150 + maxDrop * 65);
+    await delay(250 + maxDrop * 45);
   }
 }
 
@@ -1140,7 +1139,7 @@ async function fillBoard() {
           const dist = emptyCount - fillIdx;
           cell.className = 'cell drop';
           cell.style.setProperty('--drop-distance', `${-(dist + 1) * cellH}px`);
-          cell.style.setProperty('--drop-duration', `${0.2 + dist * 0.05}s`);
+          cell.style.setProperty('--drop-duration', `${0.3 + dist * 0.04}s`);
           updateCell(r, c);
           if (dist > maxNewDrop) maxNewDrop = dist;
           fillIdx++;
@@ -1148,7 +1147,7 @@ async function fillBoard() {
       }
     }
   }
-  if (filled) await delay(200 + maxNewDrop * 55);
+  if (filled) await delay(300 + maxNewDrop * 45);
 }
 
 function hasValidMove() {
