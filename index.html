@@ -1095,9 +1095,9 @@ async function applyGravity() {
 
   if (maxDrop > 0) {
     sfxDrop();
-    // Get cell size for distance calculation
     const firstCell = getCellEl(0, 0);
-    const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50; // +3 for gap
+    const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50;
+    const duration = 0.35;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -1108,12 +1108,12 @@ async function applyGravity() {
         if (dropMap[r][c] > 0) {
           const dist = dropMap[r][c];
           cell.style.setProperty('--drop-distance', `${-dist * cellH}px`);
-          cell.style.setProperty('--drop-duration', `${0.25 + dist * 0.04}s`);
+          cell.style.setProperty('--drop-duration', `${duration}s`);
           cell.classList.add('drop');
         }
       }
     }
-    await delay(250 + maxDrop * 45);
+    await delay(duration * 1000 + 30);
   }
 }
 
@@ -1121,9 +1121,8 @@ async function fillBoard() {
   let filled = false;
   const firstCell = getCellEl(0, 0);
   const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50;
-  let maxNewDrop = 0;
+  const duration = 0.35;
 
-  // Count empty cells per column from top to know drop distance
   for (let c = 0; c < cols; c++) {
     let emptyCount = 0;
     for (let r = 0; r < rows; r++) {
@@ -1139,15 +1138,14 @@ async function fillBoard() {
           const dist = emptyCount - fillIdx;
           cell.className = 'cell drop';
           cell.style.setProperty('--drop-distance', `${-(dist + 1) * cellH}px`);
-          cell.style.setProperty('--drop-duration', `${0.3 + dist * 0.04}s`);
+          cell.style.setProperty('--drop-duration', `${duration}s`);
           updateCell(r, c);
-          if (dist > maxNewDrop) maxNewDrop = dist;
           fillIdx++;
         }
       }
     }
   }
-  if (filled) await delay(300 + maxNewDrop * 45);
+  if (filled) await delay(duration * 1000 + 30);
 }
 
 function hasValidMove() {
