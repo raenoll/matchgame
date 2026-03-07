@@ -265,7 +265,7 @@ body {
   justify-content: center;
   font-size: 1.8rem;
   cursor: pointer;
-  transition: transform 0.15s, opacity 0.2s;
+  transition: transform 0.15s;
   position: relative;
   -webkit-tap-highlight-color: transparent;
   border: 1px solid rgba(255,255,255,0.15);
@@ -992,7 +992,7 @@ async function processMatches() {
     const pts = matchedCells.size * 10 * comboCount;
     score += pts;
 
-    // Visual: fade out matched
+    // Step 1: Fade out matched cells
     for (const key of matchedCells) {
       const [r, c] = key.split(',').map(Number);
       const cell = getCellEl(r, c);
@@ -1005,22 +1005,28 @@ async function processMatches() {
     sfxMatch(comboCount);
     if (comboCount >= 2) showCombo(comboCount);
 
-    // Show score popup at first match position
     const firstMatch = [...matchedCells][0].split(',').map(Number);
     showScorePopup(firstMatch[0], firstMatch[1], `+${pts}`);
 
-    await delay(280);
+    await delay(300);
 
-    // Remove matched gems
+    // Step 2: Remove matched gems from board AND clear visually
     for (const key of matchedCells) {
       const [r, c] = key.split(',').map(Number);
       board[r][c] = -1;
+      const cell = getCellEl(r, c);
+      if (cell) {
+        cell.className = 'cell';
+        cell.textContent = '';
+        cell.style.background = 'transparent';
+        cell.style.opacity = '0';
+      }
     }
 
-    // Gravity
+    // Step 3: Gravity - slide existing gems down
     await applyGravity();
 
-    // Fill
+    // Step 4: Fill empty spots with new gems dropping from above
     await fillBoard();
 
     updateUI();
@@ -1103,14 +1109,23 @@ async function applyGravity() {
       for (let c = 0; c < cols; c++) {
         const cell = getCellEl(r, c);
         if (!cell) continue;
-        cell.className = 'cell';
-        updateCell(r, c);
         if (dropMap[r][c] > 0) {
+          // This cell received a gem from above — show it and animate drop
           const dist = dropMap[r][c];
+          cell.className = 'cell drop';
+          cell.style.opacity = '';
+          cell.textContent = GEMS[board[r][c]];
+          cell.style.background = GEM_COLORS[board[r][c]];
           cell.style.setProperty('--drop-distance', `${-dist * cellH}px`);
           cell.style.setProperty('--drop-duration', `${duration}s`);
-          cell.classList.add('drop');
+        } else if (board[r][c] < 0) {
+          // Empty cell — keep it invisible
+          cell.className = 'cell';
+          cell.textContent = '';
+          cell.style.background = 'transparent';
+          cell.style.opacity = '0';
         }
+        // Cells that didn't move stay as they are
       }
     }
     await delay(duration * 1000 + 30);
@@ -1137,9 +1152,11 @@ async function fillBoard() {
         if (cell) {
           const dist = emptyCount - fillIdx;
           cell.className = 'cell drop';
+          cell.style.opacity = '';
+          cell.textContent = GEMS[board[r][c]];
+          cell.style.background = GEM_COLORS[board[r][c]];
           cell.style.setProperty('--drop-distance', `${-(dist + 1) * cellH}px`);
           cell.style.setProperty('--drop-duration', `${duration}s`);
-          updateCell(r, c);
           fillIdx++;
         }
       }
