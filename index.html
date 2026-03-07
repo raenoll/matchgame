@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Candy Crush - Match 3</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,7 +16,8 @@
 body {
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   overflow: hidden;
-  height: 100vh;
+  height: 100dvh;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #1a1a2e 100%);
   background-size: 400% 400%;
   animation: bgShift 20s ease infinite;
@@ -30,7 +31,7 @@ body {
 #app {
   width: 100%;
   max-width: 480px;
-  height: 100vh;
+  height: 100dvh;
   max-height: 850px;
   position: relative;
   display: flex;
@@ -155,7 +156,7 @@ body {
 
 .back-row {
   position: fixed;
-  bottom: 15px;
+  bottom: calc(15px + env(safe-area-inset-bottom, 0px));
   z-index: 10;
 }
 
@@ -194,20 +195,16 @@ body {
 
 .sound-toggles {
   display: flex;
-  gap: 8px;
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  z-index: 20;
+  gap: 6px;
 }
 
 .toggle-btn {
-  width: 36px; height: 36px;
+  width: 30px; height: 30px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.6);
   background: rgba(255,255,255,0.15);
   color: #fff;
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -351,7 +348,7 @@ body {
   display: flex;
   justify-content: center;
   gap: 10px;
-  padding: 8px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
 }
 
@@ -426,18 +423,16 @@ body {
 <body>
 
 <div id="app">
-  <!-- Sound Toggles (global) -->
-  <div class="sound-toggles">
-    <button class="toggle-btn" id="bgmToggle" title="Background Music">&#9835;</button>
-    <button class="toggle-btn" id="sfxToggle" title="Sound Effects">&#128264;</button>
-  </div>
-
   <!-- Title Screen -->
   <div class="screen active" id="titleScreen">
     <h1>Candy Match</h1>
     <p class="subtitle">Match 3 Puzzle Game</p>
     <button class="btn btn-play" onclick="startGame()">Start Game</button>
     <button class="btn btn-levels" onclick="showLevels()" style="margin-top: 8px;">Select Level</button>
+    <div class="sound-toggles" style="margin-top: 30px;">
+      <button class="toggle-btn" id="bgmToggle" title="Background Music">&#9835;</button>
+      <button class="toggle-btn" id="sfxToggle" title="Sound Effects">&#128264;</button>
+    </div>
   </div>
 
   <!-- Level Select Screen -->
@@ -455,6 +450,10 @@ body {
       <div class="info-left">
         <span class="level-label" id="levelLabel">Level 1</span>
         <span class="score-label" id="scoreLabel">Score: 0</span>
+      </div>
+      <div class="sound-toggles">
+        <button class="toggle-btn game-bgm-toggle" title="Background Music">&#9835;</button>
+        <button class="toggle-btn game-sfx-toggle" title="Sound Effects">&#128264;</button>
       </div>
       <div class="info-right">
         <span class="moves-label" id="movesLabel">Moves: 20</span>
@@ -600,19 +599,30 @@ function stopBGM() {
   if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
 }
 
-// Toggle buttons
-document.getElementById('bgmToggle').addEventListener('click', () => {
-  ensureAudio();
-  bgmEnabled = !bgmEnabled;
-  document.getElementById('bgmToggle').classList.toggle('off', !bgmEnabled);
-  if (bgmEnabled && document.getElementById('gameScreen').classList.contains('active')) startBGM();
-  else stopBGM();
-});
+// Toggle buttons - sync all instances
+function syncBgmButtons() {
+  document.querySelectorAll('#bgmToggle, .game-bgm-toggle').forEach(b => b.classList.toggle('off', !bgmEnabled));
+}
+function syncSfxButtons() {
+  document.querySelectorAll('#sfxToggle, .game-sfx-toggle').forEach(b => b.classList.toggle('off', !sfxEnabled));
+}
 
-document.getElementById('sfxToggle').addEventListener('click', () => {
-  ensureAudio();
-  sfxEnabled = !sfxEnabled;
-  document.getElementById('sfxToggle').classList.toggle('off', !sfxEnabled);
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#bgmToggle, .game-bgm-toggle');
+  if (btn) {
+    ensureAudio();
+    bgmEnabled = !bgmEnabled;
+    syncBgmButtons();
+    if (bgmEnabled && document.getElementById('gameScreen').classList.contains('active')) startBGM();
+    else stopBGM();
+    return;
+  }
+  const btn2 = e.target.closest('#sfxToggle, .game-sfx-toggle');
+  if (btn2) {
+    ensureAudio();
+    sfxEnabled = !sfxEnabled;
+    syncSfxButtons();
+  }
 });
 
 // ===================== GAME STATE =====================
