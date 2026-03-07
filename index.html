@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Candy Crush - Match 3</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,6 +26,8 @@ body {
   align-items: center;
   -webkit-user-select: none;
   user-select: none;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
 }
 
 #app {
@@ -1328,6 +1330,21 @@ window.addEventListener('resize', () => {
     renderBoard();
   }
 });
+
+// Prevent pinch-zoom and double-tap zoom on mobile
+document.addEventListener('touchmove', (e) => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('gesturechange', (e) => e.preventDefault());
+
+let lastTap = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault();
+  lastTap = now;
+}, { passive: false });
 
 // Init - start interaction to unlock audio
 document.addEventListener('click', () => ensureAudio(), { once: true });
