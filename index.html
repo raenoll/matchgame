@@ -17,7 +17,7 @@ body {
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   overflow: hidden;
   height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 30%, #0f3460 60%, #1a1a2e 100%);
   background-size: 400% 400%;
   animation: bgShift 20s ease infinite;
   display: flex;
@@ -196,8 +196,8 @@ body {
   display: flex;
   gap: 8px;
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 12px;
+  left: 12px;
   z-index: 20;
 }
 
@@ -252,10 +252,10 @@ body {
 #board {
   display: grid;
   gap: 3px;
-  background: rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.35);
   border-radius: 16px;
   padding: 6px;
-  box-shadow: inset 0 2px 10px rgba(0,0,0,0.15);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.3), 0 0 20px rgba(100,150,255,0.15);
   touch-action: none;
 }
 
@@ -269,6 +269,8 @@ body {
   transition: transform 0.15s, opacity 0.2s;
   position: relative;
   -webkit-tap-highlight-color: transparent;
+  border: 1px solid rgba(255,255,255,0.15);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 .cell:active { transform: scale(0.9); }
 .cell.selected {
@@ -297,13 +299,19 @@ body {
   to { transform: scale(0); opacity: 0; }
 }
 @keyframes dropIn {
-  from { transform: translateY(-80px); opacity: 0; }
+  from { transform: translateY(var(--drop-distance, -60px)); opacity: 0.6; }
+  60% { opacity: 1; }
   to { transform: translateY(0); opacity: 1; }
+}
+@keyframes swapMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(var(--swap-dx, 0px), var(--swap-dy, 0px)); }
 }
 
 .cell.pop-in { animation: popIn 0.3s ease forwards; }
 .cell.fade-out { animation: fadeOut 0.25s ease forwards; }
-.cell.drop { animation: dropIn 0.35s ease forwards; }
+.cell.drop { animation: dropIn var(--drop-duration, 0.35s) cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.cell.swapping { animation: swapMove 0.22s ease-in-out forwards; }
 
 /* Combo text */
 .combo-text {
@@ -610,14 +618,14 @@ document.getElementById('sfxToggle').addEventListener('click', () => {
 // ===================== GAME STATE =====================
 const GEMS = ['🍬', '🍭', '🍩', '🍪', '🧁', '🍰', '🍫', '🎂'];
 const GEM_COLORS = [
-  'rgba(255,100,100,0.4)',
-  'rgba(100,200,255,0.4)',
-  'rgba(255,200,80,0.4)',
-  'rgba(180,130,80,0.4)',
-  'rgba(255,150,200,0.4)',
-  'rgba(255,220,180,0.4)',
-  'rgba(140,100,60,0.4)',
-  'rgba(255,180,150,0.4)',
+  'rgba(255, 60, 80, 0.85)',
+  'rgba(50, 160, 255, 0.85)',
+  'rgba(255, 200, 40, 0.85)',
+  'rgba(200, 140, 60, 0.85)',
+  'rgba(255, 100, 180, 0.85)',
+  'rgba(255, 165, 80, 0.85)',
+  'rgba(120, 70, 30, 0.85)',
+  'rgba(180, 80, 220, 0.85)',
 ];
 
 let currentLevel = 1;
@@ -775,7 +783,7 @@ function renderBoard() {
         cell.textContent = GEMS[gem];
         cell.style.background = GEM_COLORS[gem];
       }
-      cell.style.fontSize = `${cellSize * 0.55}px`;
+      cell.style.fontSize = `${cellSize * 0.7}px`;
 
       // Touch / click
       cell.addEventListener('pointerdown', (e) => onCellClick(r, c, e));
@@ -885,20 +893,51 @@ function clearSelection() {
 }
 
 // ===================== SWAP & MATCH =====================
+async function animateSwap(r1, c1, r2, c2) {
+  const cell1 = getCellEl(r1, c1);
+  const cell2 = getCellEl(r2, c2);
+  if (!cell1 || !cell2) return;
+
+  const rect1 = cell1.getBoundingClientRect();
+  const rect2 = cell2.getBoundingClientRect();
+  const dx = rect2.left - rect1.left;
+  const dy = rect2.top - rect1.top;
+
+  cell1.style.setProperty('--swap-dx', `${dx}px`);
+  cell1.style.setProperty('--swap-dy', `${dy}px`);
+  cell2.style.setProperty('--swap-dx', `${-dx}px`);
+  cell2.style.setProperty('--swap-dy', `${-dy}px`);
+
+  cell1.className = 'cell swapping';
+  cell2.className = 'cell swapping';
+  cell1.style.zIndex = '10';
+  cell2.style.zIndex = '10';
+
+  await delay(230);
+
+  cell1.className = 'cell';
+  cell2.className = 'cell';
+  cell1.style.zIndex = '';
+  cell2.style.zIndex = '';
+}
+
 async function trySwap(r1, c1, r2, c2) {
   if (isProcessing) return;
   isProcessing = true;
   clearSelection();
 
-  // Swap
+  // Animate swap visually first
+  await animateSwap(r1, c1, r2, c2);
+
+  // Now actually swap the data and update cells
   [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
   updateCell(r1, c1);
   updateCell(r2, c2);
 
   const matches = findMatches();
   if (matches.length === 0) {
-    // Swap back
-    await delay(200);
+    // Animate swap back
+    await animateSwap(r1, c1, r2, c2);
     [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
     updateCell(r1, c1);
     updateCell(r2, c2);
@@ -1019,55 +1058,85 @@ function findMatches() {
 }
 
 async function applyGravity() {
-  let dropped = false;
+  // Track how far each gem drops: dropMap[r][c] = number of rows it fell
+  const dropMap = [];
+  for (let r = 0; r < rows; r++) {
+    dropMap[r] = [];
+    for (let c = 0; c < cols; c++) dropMap[r][c] = 0;
+  }
+
+  let maxDrop = 0;
   for (let c = 0; c < cols; c++) {
     let writeRow = rows - 1;
     for (let r = rows - 1; r >= 0; r--) {
       if (board[r][c] >= 0) {
         if (r !== writeRow) {
+          const dist = writeRow - r;
           board[writeRow][c] = board[r][c];
           board[r][c] = -1;
-          dropped = true;
+          dropMap[writeRow][c] = dist;
+          if (dist > maxDrop) maxDrop = dist;
         }
         writeRow--;
       }
     }
   }
-  if (dropped) {
+
+  if (maxDrop > 0) {
     sfxDrop();
-    // Update all cells
+    // Get cell size for distance calculation
+    const firstCell = getCellEl(0, 0);
+    const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50; // +3 for gap
+
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = getCellEl(r, c);
-        if (cell) {
-          cell.className = 'cell';
-          if (board[r][c] >= 0) {
-            cell.classList.add('drop');
-          }
-          updateCell(r, c);
+        if (!cell) continue;
+        cell.className = 'cell';
+        updateCell(r, c);
+        if (dropMap[r][c] > 0) {
+          const dist = dropMap[r][c];
+          cell.style.setProperty('--drop-distance', `${-dist * cellH}px`);
+          cell.style.setProperty('--drop-duration', `${0.15 + dist * 0.06}s`);
+          cell.classList.add('drop');
         }
       }
     }
-    await delay(300);
+    await delay(150 + maxDrop * 65);
   }
 }
 
 async function fillBoard() {
   let filled = false;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
+  const firstCell = getCellEl(0, 0);
+  const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50;
+  let maxNewDrop = 0;
+
+  // Count empty cells per column from top to know drop distance
+  for (let c = 0; c < cols; c++) {
+    let emptyCount = 0;
+    for (let r = 0; r < rows; r++) {
+      if (board[r][c] < 0) emptyCount++;
+    }
+    let fillIdx = 0;
+    for (let r = 0; r < rows; r++) {
       if (board[r][c] < 0) {
         board[r][c] = Math.floor(Math.random() * numGemTypes);
         filled = true;
         const cell = getCellEl(r, c);
         if (cell) {
-          cell.className = 'cell pop-in';
+          const dist = emptyCount - fillIdx;
+          cell.className = 'cell drop';
+          cell.style.setProperty('--drop-distance', `${-(dist + 1) * cellH}px`);
+          cell.style.setProperty('--drop-duration', `${0.2 + dist * 0.05}s`);
           updateCell(r, c);
+          if (dist > maxNewDrop) maxNewDrop = dist;
+          fillIdx++;
         }
       }
     }
   }
-  if (filled) await delay(250);
+  if (filled) await delay(200 + maxNewDrop * 55);
 }
 
 function hasValidMove() {
