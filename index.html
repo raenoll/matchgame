@@ -313,7 +313,9 @@ body {
 
 .cell.pop-in { animation: popIn 0.3s ease forwards; }
 .cell.fade-out { animation: fadeOut 0.25s ease forwards; }
-.cell.drop { animation: dropIn var(--drop-duration, 0.35s) cubic-bezier(0.25, 0, 0.35, 1) forwards; }
+.cell.dropping {
+  transition: transform 0.35s cubic-bezier(0.25, 0, 0.35, 1);
+}
 .cell.swapping { animation: swapMove 0.22s ease-in-out forwards; }
 
 /* Combo text */
@@ -1083,7 +1085,6 @@ function findMatches() {
 }
 
 async function applyGravity() {
-  // Track how far each gem drops: dropMap[r][c] = number of rows it fell
   const dropMap = [];
   for (let r = 0; r < rows; r++) {
     dropMap[r] = [];
@@ -1111,48 +1112,57 @@ async function applyGravity() {
     sfxDrop();
     const firstCell = getCellEl(0, 0);
     const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50;
-    const duration = 0.35;
+    const duration = 350;
+    const droppingCells = [];
 
+    // Step A: place each cell at its elevated start position (no transition yet)
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = getCellEl(r, c);
         if (!cell) continue;
         if (dropMap[r][c] > 0) {
-          // This cell received a gem from above — show it and animate drop
           const dist = dropMap[r][c];
-          cell.className = 'cell drop';
+          cell.className = 'cell';
           cell.style.opacity = '';
           cell.textContent = GEMS[board[r][c]];
           cell.style.background = GEM_COLORS[board[r][c]];
-          cell.style.setProperty('--drop-distance', `${-dist * cellH}px`);
-          cell.style.setProperty('--drop-duration', `${duration}s`);
+          cell.style.transition = 'none';
+          cell.style.transform = `translateY(${-dist * cellH}px) translateZ(0)`;
+          droppingCells.push(cell);
         } else if (board[r][c] < 0) {
-          // Empty cell — keep it invisible
           cell.className = 'cell';
           cell.textContent = '';
           cell.style.background = 'transparent';
           cell.style.opacity = '0';
         }
-        // Cells that didn't move stay as they are
       }
     }
-    await delay(duration * 1000 + 30);
-    // Clean up drop class after animation
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = getCellEl(r, c);
-        if (cell && cell.classList.contains('drop')) cell.className = 'cell';
+
+    // Step B: force reflow, then enable transition and move to final position
+    if (droppingCells.length > 0) {
+      droppingCells[0].offsetHeight; // force reflow
+      for (const cell of droppingCells) {
+        cell.classList.add('dropping');
+        cell.style.transform = 'translateY(0) translateZ(0)';
+      }
+      await delay(duration + 20);
+      // Step C: clean up
+      for (const cell of droppingCells) {
+        cell.classList.remove('dropping');
+        cell.style.transition = '';
+        cell.style.transform = '';
       }
     }
   }
 }
 
 async function fillBoard() {
-  let filled = false;
   const firstCell = getCellEl(0, 0);
   const cellH = firstCell ? firstCell.getBoundingClientRect().height + 3 : 50;
-  const duration = 0.35;
+  const duration = 350;
+  const droppingCells = [];
 
+  // Step A: place new gems at elevated start position (no transition)
   for (let c = 0; c < cols; c++) {
     let emptyCount = 0;
     for (let r = 0; r < rows; r++) {
@@ -1162,29 +1172,35 @@ async function fillBoard() {
     for (let r = 0; r < rows; r++) {
       if (board[r][c] < 0) {
         board[r][c] = Math.floor(Math.random() * numGemTypes);
-        filled = true;
         const cell = getCellEl(r, c);
         if (cell) {
           const dist = emptyCount - fillIdx;
-          cell.className = 'cell drop';
+          cell.className = 'cell';
           cell.style.opacity = '';
           cell.textContent = GEMS[board[r][c]];
           cell.style.background = GEM_COLORS[board[r][c]];
-          cell.style.setProperty('--drop-distance', `${-(dist + 1) * cellH}px`);
-          cell.style.setProperty('--drop-duration', `${duration}s`);
+          cell.style.transition = 'none';
+          cell.style.transform = `translateY(${-(dist + 1) * cellH}px) translateZ(0)`;
+          droppingCells.push(cell);
           fillIdx++;
         }
       }
     }
   }
-  if (filled) {
-    await delay(duration * 1000 + 30);
-    // Clean up drop class after animation
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const cell = getCellEl(r, c);
-        if (cell && cell.classList.contains('drop')) cell.className = 'cell';
-      }
+
+  // Step B: force reflow, then transition to final position
+  if (droppingCells.length > 0) {
+    droppingCells[0].offsetHeight;
+    for (const cell of droppingCells) {
+      cell.classList.add('dropping');
+      cell.style.transform = 'translateY(0) translateZ(0)';
+    }
+    await delay(duration + 20);
+    // Step C: clean up
+    for (const cell of droppingCells) {
+      cell.classList.remove('dropping');
+      cell.style.transition = '';
+      cell.style.transform = '';
     }
   }
 }
