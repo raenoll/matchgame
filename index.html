@@ -659,6 +659,7 @@ let targetScore = 0;
 let selected = null;
 let isProcessing = false;
 let comboCount = 0;
+let gameGeneration = 0;
 
 // ===================== LEVEL DEFINITIONS =====================
 function getLevelConfig(lvl) {
@@ -720,6 +721,7 @@ function showLevels() {
 
 // ===================== BOARD LOGIC =====================
 function loadLevel(lvl) {
+  gameGeneration++;
   currentLevel = lvl;
   closeModal('winModal');
   closeModal('loseModal');
@@ -944,10 +946,12 @@ async function animateSwap(r1, c1, r2, c2) {
 async function trySwap(r1, c1, r2, c2) {
   if (isProcessing) return;
   isProcessing = true;
+  const gen = gameGeneration;
   clearSelection();
 
   // Animate swap visually first
   await animateSwap(r1, c1, r2, c2);
+  if (gen !== gameGeneration) return;
 
   // Now actually swap the data and update cells
   [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
@@ -958,6 +962,7 @@ async function trySwap(r1, c1, r2, c2) {
   if (matches.length === 0) {
     // Animate swap back
     await animateSwap(r1, c1, r2, c2);
+    if (gen !== gameGeneration) return;
     [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
     updateCell(r1, c1);
     updateCell(r2, c2);
@@ -967,16 +972,19 @@ async function trySwap(r1, c1, r2, c2) {
 
   movesLeft--;
   comboCount = 0;
-  await processMatches();
+  await processMatches(gen);
+  if (gen !== gameGeneration) return;
 
   updateUI();
 
   // Check win/lose
   if (score >= targetScore) {
     await delay(300);
+    if (gen !== gameGeneration) return;
     winLevel();
   } else if (movesLeft <= 0) {
     await delay(300);
+    if (gen !== gameGeneration) return;
     loseLevel();
   } else if (!hasValidMove()) {
     // Shuffle if no valid moves
@@ -986,9 +994,10 @@ async function trySwap(r1, c1, r2, c2) {
   isProcessing = false;
 }
 
-async function processMatches() {
+async function processMatches(gen) {
   let matches = findMatches();
   while (matches.length > 0) {
+    if (gen !== gameGeneration) return;
     comboCount++;
     let matchedCells = new Set();
     for (const m of matches) {
@@ -1018,6 +1027,7 @@ async function processMatches() {
     showScorePopup(firstMatch[0], firstMatch[1], `+${pts}`);
 
     await delay(300);
+    if (gen !== gameGeneration) return;
 
     // Step 2: Remove matched gems from board AND clear visually
     for (const key of matchedCells) {
@@ -1034,9 +1044,11 @@ async function processMatches() {
 
     // Step 3: Gravity - slide existing gems down
     await applyGravity();
+    if (gen !== gameGeneration) return;
 
     // Step 4: Fill empty spots with new gems dropping from above
     await fillBoard();
+    if (gen !== gameGeneration) return;
 
     updateUI();
     matches = findMatches();
