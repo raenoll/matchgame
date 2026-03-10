@@ -663,17 +663,19 @@ let gameGeneration = 0;
 
 // ===================== LEVEL DEFINITIONS =====================
 function getLevelConfig(lvl) {
-  // Progressive difficulty
+  // Progressive difficulty — balanced curve
   const baseRows = 7;
   const baseCols = 7;
-  const r = Math.min(baseRows + Math.floor(lvl / 15), 9);
-  const c = Math.min(baseCols + Math.floor(lvl / 15), 9);
-  // Gem types: start with 5, increase gradually
-  const types = Math.min(5 + Math.floor(lvl / 8), 8);
-  // Moves: decrease gradually
-  const moves = Math.max(35 - Math.floor(lvl * 0.4), 15);
-  // Target score: increase
-  const target = 400 + lvl * 120 + Math.floor(lvl / 10) * 500;
+  // Board grows at lvl 20 and 40
+  const r = Math.min(baseRows + Math.floor(lvl / 20), 9);
+  const c = Math.min(baseCols + Math.floor(lvl / 20), 9);
+  // Gem types: 5 → 7 max, slower ramp (every 12 levels)
+  const types = Math.min(5 + Math.floor(lvl / 12), 7);
+  // Moves: 30 down to 18, gentler slope
+  const moves = Math.max(30 - Math.floor(lvl * 0.25), 18);
+  // Target score: smooth quadratic curve, no step spikes
+  // Lvl1≈500, Lvl10≈1300, Lvl25≈3000, Lvl40≈5200, Lvl50≈7000
+  const target = Math.round(400 + lvl * 80 + lvl * lvl * 1.8);
 
   return { rows: r, cols: c, numGemTypes: types, moves, target };
 }
